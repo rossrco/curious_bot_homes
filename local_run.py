@@ -5,23 +5,22 @@ import certifi
 import urllib3
 from bs4 import BeautifulSoup
 import requests
+import json
+import pandas as pd
 
 with open('config.yaml', 'r') as config_file:
     config = yaml.load(config_file, Loader=yaml.SafeLoader)
 
 
-def compose_url(area, new_ad, new_building, property_type):
+def compose_url(area, new_ad, property_type):
     url = config['overview_page']
-
-    url += config['new_constr'] + str(new_building).lower() + '&'
 
     url += config['lifecycle']['for_sale'] + '&'
 
     for a in area.split(','):
         url += config['area_codes'][a] + '&'
 
-    for p in property_type.split(','):
-        url += config['property_type'][p] + '&'
+    url += config['property_type'][property_type] + '&'
 
     if new_ad is True:
         url += config['new_ad']
@@ -34,75 +33,78 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
                                ca_certs=certifi.where())
 
     i = 1
-    right_button = True
+    r_button = True
 
-    while i <= max_pages and right_button:
+    while i <= max_pages and r_button:
         time.sleep(random.randint(min_wait, max_wait))
         page_url = url + f'&page={i}'
         page = http.request('GET', page_url)
         parsed = BeautifulSoup(page.data.decode('utf-8'), 'html.parser')
-        ads = parsed.findAll('article', {'class': 'ads__unit'})
+        ads = parsed.findAll('article', {'class': config['tag']['ad_unit']})
+        i += 1
+        r_button_tag = parsed.find('a', {'class': config['tag']['r_button']})
+        r_button = r_button_tag is not None
         for a in ads:
             yield a
-        i += 1
 
 
-def extract_tile_details(ad, new_building):
+def extract_tile_details(ad, property_type):
     details = {}
-    link_tag = ad.find('a', {'class': 'ads__unit__link'})
-    img_tag = ad.find('div', {'class': 'ads__unit__img__ratio'
-                                       ' img-format img-format--ratio3by2'
-                                       ' img-format--centered'})
-    addr_tag = ad.find('div', {'class': 'ads__unit__content__details'})
-    price_area_tag = ad.find('div', {'class': 'ads__unit__content__keys'})\
+    link_tag = ad.find('a', {'class': config['tag']['link']})
+    img_tag = ad.find('div', {'class': config['tag']['img']})
+    addr_tag = ad.find('div', {'class': config['tag']['addr']})
+    price_area_tag = ad.find('div', {'class': config['tag']['price_area']})\
         .findAll('div')
+    promo_tag = ad.find('span', {'class': config['tag']['promo']})
 
     details['id'] = link_tag['id']
     details['link'] = config['link_prefix'] + link_tag['href']
     details['img_link'] = img_tag.img['src']
     details['short_desc'] = link_tag.string.strip()
-    details['address_short'] = addr_tag.string.strip()
-    details['new_building'] = new_building
+    details['address'] = addr_tag.string.strip()
+    details['new_building'] = 'newbuildings' in details['link']
     details['main_price'] = price_area_tag[1].string.strip()
     details['viewed'] = time.strftime('%Y-%m-%d %X')
     details['size'] = price_area_tag[0].string.strip()
+    details['type'] = property_type
+    details['promoted'] = promo_tag is not None
+    details['geocode'] = get_gmaps_geocode(details['address'])
 
     return details
 
 
-def get_gmaps_address_response(address):
+def get_gmaps_geocode(address):
     google_maps_url = 'https://maps.googleapis.com/maps/api/geocode/json'
     params = {'address': address,
               'key': config['gmaps_key']}
 
     response = requests.get(google_maps_url, params=params)
-    return response.json()
+    return json.dumps(response.json())
 
 
-def extract_gmaps_data(response):
-    resp = response['results'][0]
-    addr_comp = ['street_number', 'route', 'locality', 'postal_code',
-                 'administrative_area_level_1', 'administrative_area_level_2']
-    res = {}
-    for c in resp['address_components']:
-        for a_c in addr_comp:
-            if a_c in c['types']:
-                res[a_c] = c['long_name']
-    res['lat'] = resp['geometry']['location']['lat']
-    res['lng'] = resp['geometry']['location']['lng']
-    return res
-
-
-def extract_ads(area, new_ad, new_building, property_type, verbose, min_wait,
-                max_wait, max_pages):
-    url = compose_url(area, new_ad, new_building, property_type)
+def extract_ads(area, new_ad, property_type, verbose, min_wait, max_wait,
+                max_pages):
+    url = compose_url(area, new_ad, property_type)
 
     ad_tiles = extract_ad_tiles(url, min_wait, max_wait, max_pages)
+
+    data = []
     for ad in ad_tiles:
-        tile_details = extract_tile_details(ad, new_building)
-        addr = tile_details['address_short']
-        gmaps_json = get_gmaps_address_response(addr)
-        print('\n' * 2)
+        ad_details = extract_tile_details(ad, property_type)
+        data.append(ad_details)
+
+    return data
+
+
+def run(area, new_ad, property_type, verbose, min_wait, max_wait, max_pages):
+    run_res = []
+
+    for p in property_type.split(','):
+        run_res += extract_ads(area, new_ad, p, verbose, min_wait, max_wait,
+                               max_pages)
+
+    res_df = pd.DataFrame(run_res)
+    res_df.to_csv('result.csv', index=False)
 
 
 if __name__ == '__main__':
@@ -118,10 +120,6 @@ if __name__ == '__main__':
                         help='Get only new ads',
                         type=bool,
                         default=True)
-    parser.add_argument('--new_building',
-                        help='Get only ads for new structures',
-                        type=bool,
-                        default=False)
     parser.add_argument('--property_type',
                         help='Comma separated property types',
                         type=str,
@@ -144,5 +142,6 @@ if __name__ == '__main__':
                         default=1)
 
     args = parser.parse_args()
-    extract_ads(args.area, args.new_ad, args.new_building, args.property_type,
-                args.verbose, args.min_wait, args.max_wait, args.max_pages)
+
+    run(args.area, args.new_ad, args.property_type, args.verbose,
+        args.min_wait, args.max_wait, args.max_pages)
