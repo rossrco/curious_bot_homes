@@ -136,3 +136,6 @@ config.yaml
 
 # data files
 *.csv
+
+# os artifacts
+.DS_Store
