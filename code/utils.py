@@ -1,11 +1,16 @@
+import os
 import time
 import random
 import yaml
 import certifi
 import urllib3
 from bs4 import BeautifulSoup
-import requests
 import json
+import googlemaps
+
+
+gmaps_key = os.environ['GOOGLE_MAPS_CREDENTIALS']
+gmaps = googlemaps.Client(gmaps_key)
 
 
 with open('config.yaml', 'r') as config_file:
@@ -74,12 +79,8 @@ def extract_tile_details(ad, property_type):
 
 
 def get_gmaps_geocode(address):
-    google_maps_url = 'https://maps.googleapis.com/maps/api/geocode/json'
-    params = {'address': address,
-              'key': config['gmaps_key']}
-
-    response = requests.get(google_maps_url, params=params)
-    return json.dumps(response.json())
+    response = gmaps.geocode(address)
+    return json.dumps(response[0])
 
 
 def extract_ads(area, new_ad, property_type, verbose, min_wait, max_wait,

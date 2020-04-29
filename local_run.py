@@ -1,5 +1,9 @@
 import pandas as pd
+from google.cloud import bigquery
 from code import utils
+
+
+bq = bigquery.Client()
 
 
 def run(area, new_ad, property_type, verbose, min_wait, max_wait, max_pages):
