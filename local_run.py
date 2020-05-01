@@ -1,9 +1,6 @@
+from distutils.util import strtobool
 import pandas as pd
-from google.cloud import bigquery
-from code import utils
-
-
-bq = bigquery.Client()
+import utils
 
 
 def run(area, new_ad, property_type, verbose, min_wait, max_wait, max_pages):
@@ -14,6 +11,7 @@ def run(area, new_ad, property_type, verbose, min_wait, max_wait, max_pages):
                                      max_wait, max_pages)
 
     res_df = pd.DataFrame(run_res)
+    res_df.drop_duplicates(inplace=True)
     res_df.to_csv('result.csv', index=False)
 
 
@@ -28,8 +26,8 @@ if __name__ == '__main__':
                         default='oslo')
     parser.add_argument('--new_ad',
                         help='Get only new ads',
-                        type=bool,
-                        default=True)
+                        type=str,
+                        default='True')
     parser.add_argument('--property_type',
                         help='Comma separated property types',
                         type=str,
@@ -53,5 +51,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    run(args.area, args.new_ad, args.property_type, args.verbose,
+    run(args.area, strtobool(args.new_ad), args.property_type, args.verbose,
         args.min_wait, args.max_wait, args.max_pages)

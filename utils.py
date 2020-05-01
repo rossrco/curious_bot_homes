@@ -1,4 +1,3 @@
-import os
 import time
 import random
 import yaml
@@ -9,12 +8,12 @@ import json
 import googlemaps
 
 
-gmaps_key = os.environ['GOOGLE_MAPS_CREDENTIALS']
-gmaps = googlemaps.Client(gmaps_key)
-
-
 with open('config.yaml', 'r') as config_file:
     config = yaml.load(config_file, Loader=yaml.SafeLoader)
+
+
+gmaps_key = config['gmaps_key']
+gmaps = googlemaps.Client(gmaps_key)
 
 
 def compose_url(area, new_ad, property_type):
@@ -34,6 +33,7 @@ def compose_url(area, new_ad, property_type):
 
 
 def extract_ad_tiles(url, min_wait, max_wait, max_pages):
+    print(f'opening {url}')
     http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
                                ca_certs=certifi.where())
 
@@ -46,11 +46,26 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
         page = http.request('GET', page_url)
         parsed = BeautifulSoup(page.data.decode('utf-8'), 'html.parser')
         ads = parsed.findAll('article', {'class': config['tag']['ad_unit']})
+        print(f'viewed {len(ads)} ads on page {i}.')
         i += 1
         r_button_tag = parsed.find('a', {'class': config['tag']['r_button']})
         r_button = r_button_tag is not None
         for a in ads:
             yield a
+
+
+def extract_area_price(price_area_tag):
+    area = None
+    price = None
+    if price_area_tag is None:
+        return (area, price)
+    elif len(price_area_tag) < 2:
+        price = price_area_tag[0].string.strip()
+        return (area, price)
+    else:
+        area = price_area_tag[0].string.strip()
+        price = price_area_tag[1].string.strip()
+        return (area, price)
 
 
 def extract_tile_details(ad, property_type):
@@ -61,6 +76,7 @@ def extract_tile_details(ad, property_type):
     price_area_tag = ad.find('div', {'class': config['tag']['price_area']})\
         .findAll('div')
     promo_tag = ad.find('span', {'class': config['tag']['promo']})
+    area, price = extract_area_price(price_area_tag)
 
     details['id'] = link_tag['id']
     details['link'] = config['link_prefix'] + link_tag['href']
@@ -68,11 +84,11 @@ def extract_tile_details(ad, property_type):
     details['short_desc'] = link_tag.string.strip()
     details['address'] = addr_tag.string.strip()
     details['new_building'] = 'newbuildings' in details['link']
-    details['main_price'] = price_area_tag[1].string.strip()
-    details['viewed'] = time.strftime('%Y-%m-%d %X')
-    details['size'] = price_area_tag[0].string.strip()
-    details['type'] = property_type
     details['promoted'] = promo_tag is not None
+    details['main_price'] = price
+    details['area'] = area
+    details['type'] = property_type
+    details['viewed'] = time.strftime('%Y-%m-%d %X')
     details['geocode'] = get_gmaps_geocode(details['address'])
 
     return details
