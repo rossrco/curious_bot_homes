@@ -1,4 +1,6 @@
 import time
+import datetime
+import subprocess
 import random
 import yaml
 import certifi
@@ -14,6 +16,8 @@ with open('config.yaml', 'r') as config_file:
 
 gmaps_key = config['gmaps_key']
 gmaps = googlemaps.Client(gmaps_key)
+version = subprocess\
+    .check_output(['git', 'describe', '--always']).decode('utf-8')
 
 
 def compose_url(area, new_ad, property_type):
@@ -33,7 +37,6 @@ def compose_url(area, new_ad, property_type):
 
 
 def extract_ad_tiles(url, min_wait, max_wait, max_pages):
-    print(f'opening {url}')
     http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
                                ca_certs=certifi.where())
 
@@ -46,7 +49,7 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
         page = http.request('GET', page_url)
         parsed = BeautifulSoup(page.data.decode('utf-8'), 'html.parser')
         ads = parsed.findAll('article', {'class': config['tag']['ad_unit']})
-        print(f'viewed {len(ads)} ads on page {i}.')
+        print(f'Viewed {len(ads)} ads on page {i}.')
         i += 1
         r_button_tag = parsed.find('a', {'class': config['tag']['r_button']})
         r_button = r_button_tag is not None
@@ -88,8 +91,10 @@ def extract_tile_details(ad, property_type):
     details['main_price'] = price
     details['area'] = area
     details['type'] = property_type
-    details['viewed'] = time.strftime('%Y-%m-%d %X')
+    details['viewed'] = datetime.datetime.now()
+    details['detail_seen'] = None
     details['geocode'] = get_gmaps_geocode(details['address'])
+    details['version'] = version
 
     return details
 

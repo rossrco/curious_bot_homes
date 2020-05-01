@@ -32,16 +32,19 @@ def run():
 
     run_res = []
     for p in property_type.split(','):
-        print(f'Extracting ads for {area}, {new_ad}, {p}.')
+        print(f'Extracting ads for {area}, {p}.')
         run_res += utils.extract_ads(area, new_ad, p, verbose, min_wait,
                                      max_wait, max_pages)
 
+    print(f'Extracted {len(run_res)} ads.')
     res_df = pd.DataFrame(run_res)
+    for c in ['viewed', 'detail_seen']:
+        res_df[c] = pd.to_datetime(res_df[c])
     res_df.drop_duplicates(inplace=True)
     res_df.to_gbq(destination_table=config['bq_dest'],
                   project_id=config['project_id'],
                   if_exists='append')
-    return f'Extracted {len(res_df)} ads.'
+    return 'Records inserted'
 
 
 if __name__ == '__main__':
