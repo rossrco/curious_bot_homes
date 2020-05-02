@@ -2,7 +2,6 @@ import logging
 from distutils.util import strtobool
 import yaml
 from flask import Flask, request
-import pandas as pd
 from google.cloud import bigquery
 import utils
 
@@ -12,7 +11,8 @@ with open('config.yaml', 'r') as config_file:
 
 
 bq = bigquery.Client()
-
+table_id = config['project_id'] + '.' + config['bq_dest']
+table = bq.get_table(table_id)
 
 app = Flask(__name__)
 
@@ -20,7 +20,9 @@ app = Flask(__name__)
 @app.route('/homes_no')
 def run():
     area = request.args.get('area', default='oslo', type=str)
-    new_ad = strtobool(request.args.get('new_ad', default='True', type=str))
+    new_ad = bool(strtobool(request.args.get('new_ad',
+                                             default='True',
+                                             type=str)))
     property_type = request.args.get('property_type',
                                      default='detached,semi_detached,'
                                              'apartment,terraced',
@@ -36,14 +38,11 @@ def run():
         run_res += utils.extract_ads(area, new_ad, p, verbose, min_wait,
                                      max_wait, max_pages)
 
-    res_df = pd.DataFrame(run_res)
-    for c in ['viewed', 'detail_seen']:
-        res_df[c] = pd.to_datetime(res_df[c])
-    res_df.drop_duplicates(inplace=True)
-    res_df.to_gbq(destination_table=config['bq_dest'],
-                  project_id=config['project_id'],
-                  if_exists='append')
-    return 'Records inserted'
+    errors = bq.insert_rows(table, run_res)
+    if errors == []:
+        return 'New rows have been added.'
+    else:
+        return errors
 
 
 if __name__ == '__main__':
