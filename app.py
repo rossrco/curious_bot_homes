@@ -36,7 +36,6 @@ def run():
         run_res += utils.extract_ads(area, new_ad, p, verbose, min_wait,
                                      max_wait, max_pages)
 
-    print(f'Extracted {len(run_res)} ads.')
     res_df = pd.DataFrame(run_res)
     for c in ['viewed', 'detail_seen']:
         res_df[c] = pd.to_datetime(res_df[c])

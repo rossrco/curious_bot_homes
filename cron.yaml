@@ -1,0 +1,12 @@
+cron:
+  - description: extract housing ids
+    url: /homes_no?max_pages=50
+    schedule: every day 10:00
+    timezone: Europe/Berlin
+    target: homes
+
+  - description: extract job ads
+    url: /
+    schedule: every day 08:00
+    timezone: Europe/Berlin
+    target: default
