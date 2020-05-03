@@ -17,6 +17,11 @@ table = bq.get_table(table_id)
 app = Flask(__name__)
 
 
+@app.route('/')
+def hello():
+    return 'Nothing to see here, move along!'
+
+
 @app.route('/homes_no')
 def run():
     area = request.args.get('area', default='oslo', type=str)
@@ -39,8 +44,9 @@ def run():
                                      max_wait, max_pages)
 
     errors = bq.insert_rows(table, run_res)
+
     if errors == []:
-        return 'New rows have been added.'
+        return 'New rows are added.'
     else:
         return errors
 
@@ -49,4 +55,4 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s: %(message)s',
                         level=logging.INFO)
 
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    app.run(host='127.0.0.1', port=8081, debug=True)
