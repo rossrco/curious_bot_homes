@@ -24,15 +24,15 @@ version = subprocess\
 def compose_url(area, new_ad, property_type):
     url = config['overview_page']
 
-    url += config['lifecycle']['for_sale'] + '&'
+    url += '&' + config['lifecycle']['for_sale']
 
     for a in area.split(','):
-        url += config['area_codes'][a] + '&'
+        url += '&' + config['area_codes'][a]
 
-    url += config['property_type'][property_type] + '&'
+    url += '&' + config['property_type'][property_type]
 
     if new_ad is True:
-        url += config['new_ad']
+        url += '&' + config['new_ad']
 
     return url
 
@@ -47,6 +47,7 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
     while i <= max_pages and r_button:
         time.sleep(random.randint(min_wait, max_wait))
         page_url = url + f'&page={i}'
+        print(page_url)
         page = http.request('GET', page_url)
         parsed = BeautifulSoup(page.data.decode('utf-8'), 'html.parser')
         ads = parsed.findAll('article', {'class': config['tag']['ad_unit']})
