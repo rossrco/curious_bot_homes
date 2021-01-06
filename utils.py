@@ -47,7 +47,6 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
     while i <= max_pages and r_button:
         time.sleep(random.randint(min_wait, max_wait))
         page_url = url + f'&page={i}'
-        print(page_url)
         page = http.request('GET', page_url)
         parsed = BeautifulSoup(page.data.decode('utf-8'), 'html.parser')
         ads = parsed.findAll('article', {'class': config['tag']['ad_unit']})
@@ -84,7 +83,10 @@ def extract_tile_details(ad, property_type):
     area, price = extract_area_price(price_area_tag)
 
     details['id'] = link_tag['id']
-    details['link'] = config['link_prefix'] + link_tag['href']
+    if promo_tag is None:
+        details['link'] = link_tag['href']
+    else:
+        details['link'] = config['link_prefix'] + link_tag['href']
     details['img_link'] = img_tag['src']
     details['short_desc'] = link_tag.string.strip()
     details['address'] = addr_tag.string.strip()
