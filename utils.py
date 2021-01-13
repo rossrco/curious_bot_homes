@@ -17,8 +17,9 @@ with open('config.yaml', 'r') as config_file:
 
 gmaps_key = config['gmaps_key']
 gmaps = googlemaps.Client(gmaps_key)
-version = subprocess\
-    .check_output(['git', 'describe', '--always']).decode('utf-8')
+version = (subprocess
+           .check_output(['git', 'describe', '--always'])
+           .decode('utf-8'))
 
 
 def compose_url(area, new_ad, property_type):
@@ -61,6 +62,7 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
 def extract_area_price(price_area_tag):
     area = None
     price = None
+
     if price_area_tag is None:
         return (area, price)
     elif len(price_area_tag) < 2:
@@ -77,16 +79,19 @@ def extract_tile_details(ad, property_type):
     link_tag = ad.find('a', {'class': config['tag']['link']})
     img_tag = ad.find('img')
     addr_tag = ad.find('div', {'class': config['tag']['addr']})
-    price_area_tag = ad.find('div', {'class': config['tag']['price_area']})\
-        .findAll('div')
+    price_area_tag = (ad
+                      .find('div', {'class': config['tag']['price_area']})
+                      .findAll('div'))
     promo_tag = ad.find('span', {'class': config['tag']['promo']})
     area, price = extract_area_price(price_area_tag)
 
     details['id'] = link_tag['id']
+
     if promo_tag is None:
         details['link'] = link_tag['href']
     else:
         details['link'] = config['link_prefix'] + link_tag['href']
+
     details['img_link'] = img_tag['src']
     details['short_desc'] = link_tag.string.strip()
     details['address'] = addr_tag.string.strip()
@@ -110,6 +115,7 @@ def get_gmaps_geocode(address):
 
 def extract_ads(area, new_ad, property_type, verbose, min_wait, max_wait,
                 max_pages):
+
     url = compose_url(area, new_ad, property_type)
     ad_tiles = extract_ad_tiles(url, min_wait, max_wait, max_pages)
 

@@ -25,9 +25,9 @@ def hello():
 @app.route('/homes_no')
 def run():
     area = request.args.get('area', default='oslo', type=str)
-    new_ad = bool(strtobool(request.args.get('new_ad',
-                                             default='True',
-                                             type=str)))
+    new_ad = bool(strtobool(request
+                            .args
+                            .get('new_ad', default='True', type=str)))
     property_type = request.args.get('property_type',
                                      default='detached,semi_detached,'
                                              'apartment,terraced',
