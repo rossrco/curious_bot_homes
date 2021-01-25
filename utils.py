@@ -23,17 +23,17 @@ version = (subprocess
 
 
 def compose_url(area, new_ad, property_type):
-    url = config['overview_page']
+    url = config['no']['link_prefix'] + config['no']['overview_page']
 
-    url += '&' + config['lifecycle']['for_sale']
+    url += '&' + config['no']['lifecycle']['for_sale']
 
     for a in area.split(','):
-        url += '&' + config['area_codes'][a]
+        url += '&' + config['no']['area_codes'][a]
 
-    url += '&' + config['property_type'][property_type]
+    url += '&' + config['no']['property_type'][property_type]
 
     if new_ad is True:
-        url += '&' + config['new_ad']
+        url += '&' + config['no']['new_ad']
 
     return url
 
@@ -50,10 +50,12 @@ def extract_ad_tiles(url, min_wait, max_wait, max_pages):
         page_url = url + f'&page={i}'
         page = http.request('GET', page_url)
         parsed = BeautifulSoup(page.data.decode('utf-8'), 'html.parser')
-        ads = parsed.findAll('article', {'class': config['tag']['ad_unit']})
+        ads = parsed.findAll('article',
+                             {'class': config['no']['tag']['ad_unit']})
         print(f'Viewed {len(ads)} ads on page {i}.')
         i += 1
-        r_button_tag = parsed.find('a', {'class': config['tag']['r_button']})
+        r_button_tag = parsed.find('a',
+                                   {'class': config['no']['tag']['r_button']})
         r_button = r_button_tag is not None
         for a in ads:
             yield a
@@ -69,20 +71,22 @@ def extract_area_price(price_area_tag):
         price = price_area_tag[0].string.strip()
         return (area, price)
     else:
-        area = price_area_tag[0].find(string=re.compile('\d')).strip()
-        price = price_area_tag[1].find(string=re.compile('\d')).strip()
-        return (area, price)
+        area = price_area_tag[0].find(string=re.compile('\d'))
+        price = price_area_tag[1].find(string=re.compile('\d'))
+
+        return (area.strip() if area is not None else area,
+                price.strip() if price is not None else price)
 
 
 def extract_tile_details(ad, property_type):
     details = {}
-    link_tag = ad.find('a', {'class': config['tag']['link']})
+    link_tag = ad.find('a', {'class': config['no']['tag']['link']})
     img_tag = ad.find('img')
-    addr_tag = ad.find('div', {'class': config['tag']['addr']})
+    addr_tag = ad.find('div', {'class': config['no']['tag']['addr']})
     price_area_tag = (ad
-                      .find('div', {'class': config['tag']['price_area']})
+                      .find('div', {'class': config['no']['tag']['price_area']})
                       .findAll('div'))
-    promo_tag = ad.find('span', {'class': config['tag']['promo']})
+    promo_tag = ad.find('span', {'class': config['no']['tag']['promo']})
     area, price = extract_area_price(price_area_tag)
 
     details['id'] = link_tag['id']
@@ -90,7 +94,7 @@ def extract_tile_details(ad, property_type):
     if promo_tag is None:
         details['link'] = link_tag['href']
     else:
-        details['link'] = config['link_prefix'] + link_tag['href']
+        details['link'] = config['no']['link_prefix'] + link_tag['href']
 
     details['img_link'] = img_tag['src']
     details['short_desc'] = link_tag.string.strip()
